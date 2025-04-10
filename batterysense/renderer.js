@@ -4,6 +4,9 @@ const Chart = require('chart.js/auto');
 // DOM Elements
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
+const chargingIconEl = document.getElementById('charging-icon');
+const timeRemainingNoteEl = document.getElementById('time-remaining-note');
+const avgBatteryInfoEl = document.getElementById('avg-battery-info');
 
 // Battery Status Elements
 const batteryLevelEl = document.getElementById('battery-level');
@@ -38,6 +41,9 @@ const saveSettingsBtn = document.getElementById('save-settings');
 let batteryChart = null;
 let usageChart = null;
 
+// Add at the top of the file
+let updateTimeout = null;
+
 // Track the last battery state to detect changes
 let lastBatteryState = {
   percentage: 0,
@@ -60,6 +66,44 @@ tabButtons.forEach(button => {
     ipcRenderer.send('request-battery-data');
   });
 });
+
+// Modify predict Charging Time for more sophisticated estimation
+function predictChargingTime(batteryInfo, historyData) {
+    if (!batteryInfo || !batteryInfo.ischarging) return null;
+    
+    const percentage = batteryInfo.percent;
+    const remainingPercentage = 100 - percentage;
+    
+    // If we have historical charging data, use it for more accurate prediction
+    if (historyData && historyData.length > 5) {
+      // Extract recent charging sessions
+      const chargingSessions = extractChargingSessions(historyData);
+      
+      if (chargingSessions.length > 0) {
+        // Calculate average charging rate
+        const avgChargingRates = chargingSessions.map(session => 
+          (session.endPercentage - session.startPercentage) / session.duration
+        );
+        
+        const avgChargingRate = avgChargingRates.reduce((sum, rate) => sum + rate, 0) / avgChargingRates.length;
+        
+        // Estimate time to full charge based on historical data
+        const estimatedMinutes = remainingPercentage / (avgChargingRate * 60);
+        const hours = Math.floor(estimatedMinutes / 60);
+        const minutes = Math.round(estimatedMinutes % 60);
+        
+        if (hours > 0) {
+          return `About ${hours}h ${minutes}m to full charge`;
+        } else {
+          return `About ${minutes} minutes to full charge`;
+        }
+      }
+    }
+    
+    // Fallback to basic estimation
+    const estimatedHours = Math.round(remainingPercentage / 20);
+    return `About ${estimatedHours} hour${estimatedHours !== 1 ? 's' : ''} to full charge`;
+  }
 
 // Initialize battery chart
 function initBatteryChart(historyData) {
@@ -217,7 +261,7 @@ function updateBatteryUI(batteryInfo) {
   if (!batteryInfo) return;
   
   // Update battery level with animation
-  const percentage = batteryInfo.percent;
+  const percentage = batteryInfo.hasMult ? batteryInfo.percent : batteryInfo.percent;
   const currentWidth = parseFloat(batteryLevelEl.style.width || '0');
   
   // Only animate if there's a significant change (>0.5%)
@@ -240,12 +284,23 @@ function updateBatteryUI(batteryInfo) {
     }, 2000);
   }
   
+  // Update charging icon and status text
   if (isCharging) {
     chargingStatusEl.textContent = 'Charging';
     chargingStatusEl.classList.add('charging');
+    chargingIconEl.innerHTML = '⚡';
+    chargingIconEl.classList.add('charging-animation');
+    // Change battery level color to indicate charging
+    batteryLevelEl.style.backgroundColor = 'var(--charging-color)';
+    timeRemainingNoteEl.textContent = "Time to full charge will appear as we learn your charging patterns";
   } else {
     chargingStatusEl.textContent = 'Discharging';
     chargingStatusEl.classList.remove('charging');
+    chargingIconEl.innerHTML = '🔋';
+    chargingIconEl.classList.remove('charging-animation');
+    // Restore normal battery level color
+    batteryLevelEl.style.backgroundColor = 'var(--primary-color)';
+    timeRemainingNoteEl.textContent = "Battery time will update as we learn your usage patterns";
   }
   
   // Update battery health if available
@@ -256,15 +311,19 @@ function updateBatteryUI(batteryInfo) {
     batteryHealthEl.textContent = 'Unknown';
   }
   
-  // Update time remaining
+  // Improved time remaining display
   if (!isCharging && batteryInfo.timeremaining) {
     const hours = Math.floor(batteryInfo.timeremaining / 60);
     const minutes = batteryInfo.timeremaining % 60;
     timeRemainingEl.textContent = `${hours}h ${minutes}m`;
+    timeRemainingNoteEl.textContent = "(System estimate)";
   } else if (isCharging) {
-    timeRemainingEl.textContent = 'Charging';
+    const chargePrediction = predictChargingTime(batteryInfo);
+    timeRemainingEl.textContent = chargePrediction || 'Charging';
+    timeRemainingNoteEl.textContent = "(Estimated time to full charge)";
   } else {
     timeRemainingEl.textContent = 'Unknown';
+    timeRemainingNoteEl.textContent = "(Will appear as usage patterns are learned)";
   }
   
   // Update charge cycles and capacity if available
@@ -286,6 +345,9 @@ function updateBatteryUI(batteryInfo) {
     multiBatteryIndicatorEl.style.display = 'block';
   } else {
     multiBatteryIndicatorEl.style.display = 'none';
+    if (avgBatteryInfoEl) {
+      avgBatteryInfoEl.style.display = 'none';
+    }
   }
   
   // Update recommendations based on battery status
@@ -294,66 +356,135 @@ function updateBatteryUI(batteryInfo) {
   // Save the current state for comparison with next update
   lastBatteryState.percentage = percentage;
   lastBatteryState.isCharging = isCharging;
+  lastBatteryState.timeRemaining = batteryInfo.timeremaining;
 }
 
-// Display multiple batteries information
-function updateMultiBatteryDisplay(batteryInfo) {
-  // Clear previous content
-  batteryDetailsContainerEl.innerHTML = '';
-  
-  // Add individual battery cards
-  batteryInfo.batteries.forEach((battery, index) => {
-    const batteryCard = document.createElement('div');
-    batteryCard.className = 'individual-battery';
+// Modify this part in the battery update handler
+ipcRenderer.on('battery-updated', (event, data) => {
+    const { current, history } = data;
     
-    const batteryHeader = document.createElement('div');
-    batteryHeader.className = 'individual-battery-header';
-    batteryHeader.innerHTML = `
-      <span>Battery ${index + 1}</span>
-      <span>${Math.round(battery.percent)}%</span>
-    `;
-    
-    const batteryBar = document.createElement('div');
-    batteryBar.className = 'individual-battery-bar';
-    
-    const batteryLevel = document.createElement('div');
-    batteryLevel.className = 'individual-battery-level';
-    batteryLevel.style.width = `${battery.percent}%`;
-    batteryLevel.style.backgroundColor = battery.ischarging ? 
-      'var(--charging-color)' : 'var(--primary-color)';
-    
-    batteryBar.appendChild(batteryLevel);
-    
-    const batteryStatus = document.createElement('div');
-    batteryStatus.className = 'individual-battery-status';
-    
-    // Add charging information
-    const statusText = document.createElement('span');
-    statusText.innerHTML = battery.ischarging ? 
-      '<span class="individual-battery-charging">⚡ Charging</span>' : 
-      'Discharging';
-    
-    // Add capacity information if available
-    const capacityText = document.createElement('span');
-    if (battery.maxcapacity && battery.designcapacity) {
-      const healthPercentage = Math.round((battery.maxcapacity / battery.designcapacity) * 100);
-      capacityText.textContent = `Health: ${healthPercentage}%`;
-    } else {
-      capacityText.textContent = '';
+    // Clear any existing timeout
+    if (updateTimeout) {
+      clearTimeout(updateTimeout);
     }
     
-    batteryStatus.appendChild(statusText);
-    batteryStatus.appendChild(capacityText);
-    
-    // Assemble the card
-    batteryCard.appendChild(batteryHeader);
-    batteryCard.appendChild(batteryBar);
-    batteryCard.appendChild(batteryStatus);
-    
-    // Add to container
-    batteryDetailsContainerEl.appendChild(batteryCard);
+    // Set a new timeout to update UI
+    updateTimeout = setTimeout(() => {
+      // Update battery status UI
+      updateBatteryUI(current);
+      
+      // Update charts and analysis based on active tab
+      if (history && history.length > 0) {
+        updateVisibleCharts(history);
+        updateHealthReport(current, history);
+        
+        // Pass history to predictChargingTime for more accurate estimation
+        if (current.ischarging) {
+          const chargePrediction = predictChargingTime(current, history);
+          timeRemainingEl.textContent = chargePrediction || 'Charging';
+          timeRemainingNoteEl.textContent = "(Estimated time to full charge)";
+        }
+      }
+    }, 200); // Small delay to prevent rapid updates
   });
-}
+
+// Enhanced individual battery display
+function updateMultiBatteryDisplay(batteryInfo) {
+    // Clear previous content
+    batteryDetailsContainerEl.innerHTML = '';
+    
+    // Show average battery info
+    if (avgBatteryInfoEl) {
+      avgBatteryInfoEl.style.display = 'block';
+      avgBatteryInfoEl.textContent = `Average of ${batteryInfo.count} batteries: ${Math.round(batteryInfo.percent)}%`;
+    }
+    
+    // Sort batteries by percentage to show most significant ones first
+    const sortedBatteries = [...batteryInfo.batteries].sort((a, b) => b.percent - a.percent);
+    
+    // Add individual battery cards
+    sortedBatteries.forEach((battery, index) => {
+      const batteryCard = document.createElement('div');
+      batteryCard.className = 'individual-battery';
+      
+      const batteryHeader = document.createElement('div');
+      batteryHeader.className = 'individual-battery-header';
+      batteryHeader.innerHTML = `
+        <span>Battery ${index + 1}</span>
+        <span class="${battery.ischarging ? 'charging' : ''}">${Math.round(battery.percent)}%</span>
+      `;
+      
+      const batteryBar = document.createElement('div');
+      batteryBar.className = 'individual-battery-bar';
+      
+      const batteryLevel = document.createElement('div');
+      batteryLevel.className = 'individual-battery-level';
+      batteryLevel.style.width = `${battery.percent}%`;
+      batteryLevel.style.backgroundColor = battery.ischarging ? 
+        'var(--charging-color)' : 'var(--primary-color)';
+      
+      batteryBar.appendChild(batteryLevel);
+      
+      const batteryStatus = document.createElement('div');
+      batteryStatus.className = 'individual-battery-status';
+      
+      // Charging status with additional context
+      const statusText = document.createElement('span');
+      statusText.innerHTML = battery.ischarging ? 
+        `<span class="individual-battery-charging">⚡ Charging</span>` : 
+        '🔋 Discharging';
+      
+      // Health information with more detailed color coding
+      const healthText = document.createElement('span');
+      if (battery.maxcapacity && battery.designcapacity) {
+        const healthPercentage = Math.round((battery.maxcapacity / battery.designcapacity) * 100);
+        healthText.textContent = `Health: ${healthPercentage}%`;
+        
+        // Detailed color coding for health
+        if (healthPercentage < 50) {
+          healthText.style.color = 'var(--danger-color)';
+          healthText.title = 'Battery health is critically low';
+        } else if (healthPercentage < 70) {
+          healthText.style.color = 'var(--warning-color)';
+          healthText.title = 'Battery health is declining';
+        } else if (healthPercentage < 80) {
+          healthText.style.color = 'var(--primary-color)';
+          healthText.title = 'Battery health is fair';
+        } else {
+          healthText.style.color = 'var(--success-color)';
+          healthText.title = 'Battery health is good';
+        }
+      }
+      
+      batteryStatus.appendChild(statusText);
+      batteryStatus.appendChild(healthText);
+      
+      // Time remaining for non-charging batteries
+      if (!battery.ischarging && battery.timeremaining) {
+        const timeInfo = document.createElement('div');
+        timeInfo.className = 'battery-time-info';
+        const hours = Math.floor(battery.timeremaining / 60);
+        const minutes = battery.timeremaining % 60;
+        timeInfo.textContent = `Remaining: ${hours}h ${minutes}m`;
+        
+        // Add warning for low battery
+        if (battery.percent <= 20) {
+          timeInfo.classList.add('low-battery-warning');
+          timeInfo.title = 'Battery level is critically low';
+        }
+        
+        batteryCard.appendChild(timeInfo);
+      }
+      
+      // Assemble the card
+      batteryCard.appendChild(batteryHeader);
+      batteryCard.appendChild(batteryBar);
+      batteryCard.appendChild(batteryStatus);
+      
+      // Add to container
+      batteryDetailsContainerEl.appendChild(batteryCard);
+    });
+  }
 
 // Generate recommendations based on battery data
 function updateRecommendations(batteryInfo) {
