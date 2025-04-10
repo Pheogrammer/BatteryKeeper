@@ -88,11 +88,28 @@ function checkBatteryNotifications(batteryData, batteryAnalysis) {
   const percentage = batteryData.percent;
   const isCharging = batteryData.ischarging;
   
+  // Handle multiple batteries case
+  if (batteryData.hasMult) {
+    // Check each individual battery for critical conditions
+    batteryData.batteries.forEach((battery, index) => {
+      // Critical low battery notification (per battery)
+      if (!battery.ischarging && battery.percent <= 5) {
+        sendNotification(
+          'BatterySense - Critical Battery Level',
+          `Battery ${index + 1} is critically low (${Math.round(battery.percent)}%)! Save your work and connect to power immediately.`,
+          'critical'
+        );
+      }
+    });
+    
+    // For other notifications, use the aggregate battery data
+  }
+  
   // Overcharge notification
   if (isCharging && percentage >= settings.overchargeThreshold) {
     sendNotification(
       'BatterySense - Overcharging Alert',
-      `Your battery is at ${percentage}%. To maximize battery health, consider unplugging your charger.`,
+      `Your battery is at ${Math.round(percentage)}%. To maximize battery health, consider unplugging your charger.`,
       'warning'
     );
   }
@@ -102,7 +119,7 @@ function checkBatteryNotifications(batteryData, batteryAnalysis) {
     const severity = percentage <= 10 ? 'critical' : 'warning';
     sendNotification(
       'BatterySense - Low Battery Alert',
-      `Your battery is at ${percentage}%. Connect your charger soon.`,
+      `Your battery is at ${Math.round(percentage)}%. Connect your charger soon.`,
       severity
     );
   }
@@ -121,13 +138,13 @@ function checkBatteryNotifications(batteryData, batteryAnalysis) {
     if (isCharging && percentage >= settings.optimalUpperLimit) {
       sendNotification(
         'BatterySense - Optimal Charging',
-        `Battery reached ${percentage}%. For optimal battery life, unplug your charger now.`,
+        `Battery reached ${Math.round(percentage)}%. For optimal battery life, unplug your charger now.`,
         'info'
       );
     } else if (!isCharging && percentage <= settings.optimalLowerLimit) {
       sendNotification(
         'BatterySense - Optimal Charging',
-        `Battery at ${percentage}%. For optimal battery life, it's a good time to charge now.`,
+        `Battery at ${Math.round(percentage)}%. For optimal battery life, it's a good time to charge now.`,
         'info'
       );
     }
@@ -159,6 +176,43 @@ function checkBatteryNotifications(batteryData, batteryAnalysis) {
         recentNotifications.push({
           type: 'health-warning',
           title: 'Battery Health Warning',
+          timestamp: now.toISOString()
+        });
+        
+        store.set('recentNotifications', recentNotifications);
+      }
+    }
+  }
+  
+  // Multiple battery specific notifications
+  if (batteryData.hasMult) {
+    // Check for significantly unbalanced batteries
+    const percentages = batteryData.batteries.map(bat => bat.percent);
+    const maxPercentage = Math.max(...percentages);
+    const minPercentage = Math.min(...percentages);
+    
+    if (maxPercentage - minPercentage > 20) {
+      // Only send once per week
+      const oneWeekAgo = new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000);
+      const recentNotifications = store.get('recentNotifications') || [];
+      const similarNotificationExists = recentNotifications.some(
+        notification => 
+          notification.type === 'unbalanced-batteries' && 
+          new Date(notification.timestamp) >= oneWeekAgo
+      );
+      
+      if (!similarNotificationExists) {
+        sendNotification(
+          'BatterySense - Unbalanced Batteries',
+          `Your batteries are significantly unbalanced (${Math.round(minPercentage)}% - ${Math.round(maxPercentage)}%). Consider running a battery calibration.`,
+          'warning'
+        );
+        
+        // Track this notification
+        const now = new Date();
+        recentNotifications.push({
+          type: 'unbalanced-batteries',
+          title: 'Unbalanced Batteries',
           timestamp: now.toISOString()
         });
         

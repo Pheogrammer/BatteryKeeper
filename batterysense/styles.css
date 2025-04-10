@@ -11,6 +11,8 @@
     --success-color: #4caf50;
     --warning-color: #ff9800;
     --danger-color: #f44336;
+    --charging-color: #4caf50;
+    --discharging-color: #ff9800;
   }
   
   * {
@@ -170,26 +172,85 @@
     margin-bottom: 8px;
   }
   
-  /* Stats Container */
-  .stats-container {
+  /* Charging status indicator */
+  #charging-status {
+    position: relative;
+    padding-left: 20px;
+  }
+  
+  #charging-status::before {
+    content: '⚡';
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  #charging-status.charging {
+    color: var(--charging-color);
+    font-weight: bold;
+  }
+  
+  #charging-status.charging::before {
+    opacity: 1;
+  }
+  
+  /* Multiple Battery Display */
+  .multi-battery {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--border-color);
+  }
+  
+  .multi-battery h3 {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+    color: var(--secondary-color);
+  }
+  
+  .battery-details-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .individual-battery {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  .individual-battery-header {
     display: flex;
     justify-content: space-between;
-  }
-  
-  .stat-item {
-    text-align: center;
-    flex: 1;
-  }
-  
-  .stat-item h3 {
-    font-size: 1rem;
     margin-bottom: 5px;
-    color: var(--text-color);
   }
   
-  .stat-item p {
-    font-size: 1.2rem;
-    font-weight: bold;
+  .individual-battery-bar {
+    height: 10px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 5px;
+  }
+  
+  .individual-battery-level {
+    height: 100%;
+    background-color: var(--primary-color);
+    transition: width 0.5s ease;
+  }
+  
+  .individual-battery-status {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: #666;
+  }
+  
+  .individual-battery-charging {
+    color: var(--charging-color);
   }
   
   /* Insights Styles */
@@ -243,6 +304,13 @@
     width: 20px;
     height: 20px;
     cursor: pointer;
+  }
+  
+  .setting-note {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 5px;
+    font-style: italic;
   }
   
   /* Button Styles */
@@ -304,6 +372,17 @@
     font-weight: bold;
   }
   
+  /* Animation classes */
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+  
+  .charging-animation {
+    animation: pulse 1.5s infinite;
+  }
+  
   /* Media Queries */
   @media (max-width: 768px) {
     .dashboard-grid, .insights-grid, .settings-grid {
@@ -332,5 +411,9 @@
     
     .tabs {
       margin-top: 15px;
+    }
+    
+    .multi-battery .battery-details-container {
+      flex-direction: column;
     }
   }

@@ -33,12 +33,47 @@ function calculateBatteryHealth(batteryData) {
 // Get detailed battery information
 async function getBatteryDetails() {
   try {
+    // Get all battery information
     const batteryData = await systeminformation.battery();
     
-    // Add health score calculation
-    batteryData.healthScore = calculateBatteryHealth(batteryData);
+    // Check if there are multiple batteries
+    if (Array.isArray(batteryData) && batteryData.length > 1) {
+      // Create an aggregate battery object
+      const aggregateBattery = {
+        hasMult: true,
+        count: batteryData.length,
+        batteries: batteryData,
+        // Calculate aggregate values
+        percent: batteryData.reduce((sum, battery) => sum + battery.percent, 0) / batteryData.length,
+        ischarging: batteryData.some(battery => battery.ischarging),
+        // Total capacity
+        maxcapacity: batteryData.reduce((sum, battery) => sum + (battery.maxcapacity || 0), 0),
+        designcapacity: batteryData.reduce((sum, battery) => sum + (battery.designcapacity || 0), 0),
+        // Average cycle count
+        cyclecount: Math.round(
+          batteryData.reduce((sum, battery) => sum + (battery.cyclecount || 0), 0) / batteryData.length
+        ),
+        // Use the minimum time remaining as the overall time
+        timeremaining: Math.min(...batteryData.map(battery => 
+          battery.timeremaining !== undefined ? battery.timeremaining : Infinity)
+        )
+      };
+      
+      // Fix Infinity case for timeremaining
+      if (aggregateBattery.timeremaining === Infinity) {
+        aggregateBattery.timeremaining = null;
+      }
+      
+      // Add health score calculation
+      aggregateBattery.healthScore = calculateBatteryHealth(aggregateBattery);
+      
+      return aggregateBattery;
+    }
     
-    return batteryData;
+    // Single battery case (as before)
+    const singleBattery = Array.isArray(batteryData) ? batteryData[0] : batteryData;
+    singleBattery.healthScore = calculateBatteryHealth(singleBattery);
+    return singleBattery;
   } catch (error) {
     console.error('Failed to get battery information:', error);
     return null;
@@ -207,13 +242,25 @@ function saveBatteryData(batteryData) {
   const now = new Date().toISOString();
   const historyData = store.get('batteryHistory') || [];
   
-  historyData.push({
+  // Create entry with essential data for historical tracking
+  const historyEntry = {
     timestamp: now,
     percentage: batteryData.percent,
     isCharging: batteryData.ischarging,
     capacity: batteryData.maxcapacity,
     cycleCount: batteryData.cyclecount
-  });
+  };
+  
+  // Add multi-battery info if present
+  if (batteryData.hasMult) {
+    historyEntry.isMultiBattery = true;
+    historyEntry.batteryCount = batteryData.count;
+    
+    // Add individual battery percentages
+    historyEntry.batteryPercentages = batteryData.batteries.map(battery => battery.percent);
+  }
+  
+  historyData.push(historyEntry);
   
   // Keep only recent history (last 7 days)
   const sevenDaysAgo = new Date();

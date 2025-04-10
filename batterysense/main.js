@@ -1,8 +1,9 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const systeminformation = require('systeminformation');
-const notifier = require('node-notifier');
+const batteryMonitor = require('./batteryMonitor');
+const notificationSystem = require('./notificationSystem');
+const settingsManager = require('./settings');
 
 // Store for settings
 const store = new Store();
@@ -11,6 +12,7 @@ const store = new Store();
 let mainWindow;
 let tray;
 let batteryCheckInterval;
+let historyInterval;
 let isQuitting = false;
 
 // Initialize default settings if not set
@@ -45,9 +47,9 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
-
-   // Add the DevTools line here
-    mainWindow.webContents.openDevTools();
+  
+  // Open DevTools for debugging (comment out for production)
+  mainWindow.webContents.openDevTools();
 
   // Handle window close event
   mainWindow.on('close', (event) => {
@@ -95,11 +97,10 @@ function createTray() {
   });
 }
 
-// Get battery information using systeminformation
+// Get battery information using batteryMonitor
 async function getBatteryInfo() {
   try {
-    const batteryData = await systeminformation.battery();
-    return batteryData;
+    return await batteryMonitor.getBatteryDetails();
   } catch (error) {
     console.error('Failed to get battery information:', error);
     return null;
@@ -109,94 +110,66 @@ async function getBatteryInfo() {
 // Check battery status and send notifications if needed
 async function checkBatteryStatus() {
   const settings = store.get('settings');
-  if (!settings.notificationsEnabled) return;
 
   const batteryInfo = await getBatteryInfo();
   if (!batteryInfo) return;
 
-  const batteryPercentage = batteryInfo.percent;
-  const isCharging = batteryInfo.ischarging;
-
-  // Store the data point for history
-  const now = new Date().toISOString();
-  const historyData = store.get('batteryHistory') || [];
-  historyData.push({
-    timestamp: now,
-    percentage: batteryPercentage,
-    isCharging
-  });
-  
-  // Keep only recent history (last 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentHistory = historyData.filter(
-    item => new Date(item.timestamp) >= sevenDaysAgo
-  );
-  store.set('batteryHistory', recentHistory);
-
   // Send current data to UI
   if (mainWindow && !mainWindow.isDestroyed()) {
+    const historyData = store.get('batteryHistory') || [];
     mainWindow.webContents.send('battery-updated', {
       current: batteryInfo,
-      history: recentHistory
+      history: historyData
     });
   }
 
-  // Overcharge notification
-  if (isCharging && batteryPercentage >= settings.overchargeThreshold) {
-    notifier.notify({
-      title: 'BatterySense - Overcharging Alert',
-      message: `Your battery is at ${batteryPercentage}%. To maximize battery health, consider unplugging your charger.`,
-      icon: path.join(__dirname, 'assets/icons/notification-icon.png'),
-      sound: true
-    });
+  // Check for notifications only if they're enabled
+  if (settings.notificationsEnabled) {
+    // Get battery analysis
+    const historyData = store.get('batteryHistory') || [];
+    const analysis = batteryMonitor.analyzeBatteryUsage(historyData);
+    
+    // Send notifications based on battery status
+    notificationSystem.checkBatteryNotifications(batteryInfo, analysis);
   }
+}
 
-  // Low battery notification
-  if (!isCharging && batteryPercentage <= settings.lowBatteryThreshold) {
-    notifier.notify({
-      title: 'BatterySense - Low Battery Alert',
-      message: `Your battery is at ${batteryPercentage}%. Connect your charger soon.`,
-      icon: path.join(__dirname, 'assets/icons/notification-icon.png'),
-      sound: true
-    });
-  }
-
-  // Optimal charging suggestion
-  if (settings.optimalChargeCycles.enabled) {
-    if (isCharging && batteryPercentage >= settings.optimalChargeCycles.upperLimit) {
-      notifier.notify({
-        title: 'BatterySense - Optimal Charging',
-        message: `Battery reached ${batteryPercentage}%. For optimal battery life, unplug your charger now.`,
-        icon: path.join(__dirname, 'assets/icons/notification-icon.png')
-      });
-    } else if (!isCharging && batteryPercentage <= settings.optimalChargeCycles.lowerLimit) {
-      notifier.notify({
-        title: 'BatterySense - Optimal Charging',
-        message: `Battery at ${batteryPercentage}%. For optimal battery life, it's a good time to charge now.`,
-        icon: path.join(__dirname, 'assets/icons/notification-icon.png')
-      });
-    }
+// Save battery history data less frequently
+async function saveBatteryHistoryData() {
+  const batteryInfo = await getBatteryInfo();
+  if (batteryInfo) {
+    batteryMonitor.saveBatteryData(batteryInfo);
   }
 }
 
 // Set up battery monitoring interval
 function startBatteryMonitoring() {
   const settings = store.get('settings');
-  const intervalMinutes = settings.checkIntervalMinutes;
+  const realTimeIntervalSeconds = 5; // Check every 5 seconds for real-time updates
   
-  // Clear existing interval if any
+  // Clear existing intervals if any
   if (batteryCheckInterval) {
     clearInterval(batteryCheckInterval);
   }
   
+  if (historyInterval) {
+    clearInterval(historyInterval);
+  }
+  
   // Check immediately once
   checkBatteryStatus();
+  saveBatteryHistoryData();
   
-  // Then set up the interval
+  // Set up the interval for real-time monitoring (UI updates)
   batteryCheckInterval = setInterval(() => {
     checkBatteryStatus();
-  }, intervalMinutes * 60 * 1000);
+  }, realTimeIntervalSeconds * 1000); // Convert to milliseconds
+  
+  // Set up a less frequent interval for saving historical data
+  // to avoid creating too many data points
+  historyInterval = setInterval(() => {
+    saveBatteryHistoryData();
+  }, settings.checkIntervalMinutes * 60 * 1000);
 }
 
 // IPC handler for settings updates
@@ -255,5 +228,8 @@ app.on('before-quit', () => {
   isQuitting = true;
   if (batteryCheckInterval) {
     clearInterval(batteryCheckInterval);
+  }
+  if (historyInterval) {
+    clearInterval(historyInterval);
   }
 });
