@@ -46,6 +46,9 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
+   // Add the DevTools line here
+    mainWindow.webContents.openDevTools();
+
   // Handle window close event
   mainWindow.on('close', (event) => {
     if (!isQuitting && store.get('settings.minimizeToTray')) {
