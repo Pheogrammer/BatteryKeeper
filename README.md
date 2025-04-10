@@ -1,48 +1,91 @@
 # BatterySense
 
-[![License](https://img.shields.io/badge/License-CC--BY--SA-blue.svg)](https://creativecommons.org/licenses/by-sa/4.0)
-
-## Description
-BatterySense is a software application that comes to the rescue of your laptop's battery woes, offering a humorous yet practical solution. Do you remember that time when your battery died because you left it connected for way too long? Or that time you forgot your laptop at the office for weeks, only to find its battery capacity drastically reduced? Fear not, for BatterySense is here to save the day!
-
-BatterySense provides real-time monitoring, charging reminders, and recommendations to help you maintain optimal battery performance. It's like a medicine for your laptop's battery ailments, ensuring you never suffer from battery-related mishaps again.
-
-With BatterySense, you can bid farewell to unexpected power outages and say hello to a healthy and long-lasting battery life. It keeps an eye on your battery's health, warns you of overcharging, and offers personalized recommendations for optimal charging practices. Let BatterySense be your trusted companion in keeping your laptop and its battery in top shape.
-
-So, connect with confidence, charge with care, and let BatterySense be your battery's superhero!
-
-
-## Installation
-Provide instructions on how to install and set up BatterySense on your system. Include any dependencies or system requirements that need to be met. Provide step-by-step instructions or commands for installation.
-
-## Usage
-Once BatterySense is installed, you can launch the application and let it run in the background. It will monitor your laptop's battery status and provide notifications and recommendations as needed. You can customize settings and preferences within the application to suit your needs.
+BatterySense is a desktop application that monitors and optimizes your laptop's battery health with smart charging recommendations. It helps extend battery life through better charging habits and provides real-time insights into battery performance.
 
 ## Features
-- Real-time monitoring of battery charge level and health status.
-- Charging reminders to help prevent overcharging or prolonged charging.
-- Customizable charging schedules based on specific conditions.
-- Battery health recommendations for optimal charging practices.
 
-## Configuration
-BatterySense allows you to configure various settings to personalize your experience. You can adjust notification preferences, customize charging thresholds, and set up specific charging schedules. Detailed instructions on configuring these settings can be found in the [Configuration Guide](link-to-configuration-guide.md).
+- Real-time monitoring of battery charge level and health status
+- Smart notifications for optimal charging and discharging
+- Battery health analysis with personalized recommendations
+- Customizable charging thresholds to maximize battery lifespan
+- Historical battery usage data visualization
+- System tray integration for easy access
 
-## Contributing
-We welcome contributions from the community. To contribute to BatterySense, please follow the guidelines outlined in [CONTRIBUTING.md](link-to-contributing.md).
+## Installation
+
+### Requirements
+
+- Node.js 14+ and npm
+
+### Setup
+
+1. Clone this repository or download the source code
+2. Navigate to the project directory in your terminal
+3. Install dependencies:
+
+```bash
+npm install
+```
+
+4. Start the application:
+
+```bash
+npm start
+```
+
+### Building for Distribution
+
+To build the application for distribution:
+
+```bash
+npm run package
+```
+
+This will create distributable packages for your current platform in the `dist` directory.
+
+## Project Structure
+
+```
+battery-sense/
+├── assets/
+│   └── icons/              # Application icons
+├── main.js                 # Main Electron process
+├── index.html              # Main application UI
+├── renderer.js             # Renderer process (UI logic)
+├── styles.css              # Application styling
+├── batteryMonitor.js       # Core battery monitoring functionality
+├── notificationSystem.js   # Notification management
+├── settings.js             # User preferences management
+└── package.json            # Project configuration
+```
+
+## Development
+
+### Adding Icons
+
+You'll need to create the following icon files and place them in the `assets/icons` directory:
+
+- `icon.png` - Main application icon
+- `tray-icon.png` - System tray icon
+- `notification-icon.png` - Default notification icon
+- `warning-icon.png` - Warning notification icon
+- `critical-icon.png` - Critical notification icon
+- `success-icon.png` - Success notification icon
+
+### Dependencies
+
+BatterySense uses the following key technologies:
+
+- [Electron](https://www.electronjs.org/) - For cross-platform desktop app development
+- [systeminformation](https://www.npmjs.com/package/systeminformation) - For battery data access
+- [Chart.js](https://www.chartjs.org/) - For data visualization
+- [electron-store](https://github.com/sindresorhus/electron-store) - For settings persistence
+- [node-notifier](https://github.com/mikaelbr/node-notifier) - For system notifications
 
 ## License
-This project is licensed under the [Creative Commons Attribution Share Alike 4.0 International License (CC-BY-SA)](https://creativecommons.org/licenses/by-sa/4.0/). For more information, please see the [LICENSE](link-to-license.md) file.
 
-## Documentation
-For detailed documentation and user guides, please refer to the [BatterySense Documentation](link-to-documentation).
+MIT
 
-## Support
-If you encounter any issues or have questions, please [create an issue](link-to-issue-tracker) in our issue tracker.
+## Contributing
 
-## Acknowledgements
-We would like to acknowledge and thank the following open source projects and libraries that made BatterySense possible:
-- [Library/Project 1](link-to-library1)
-- [Library/Project 2](link-to-library2)
-
-## Contact
-For any further inquiries or collaborations, please contact [battery-sense-support@example.com](mailto:battery-sense-support@example.com).
+Contributions are welcome! Please feel free to submit a Pull Request.

@@ -1,0 +1,336 @@
+/* General Styles */
+:root {
+    --primary-color: #4caf50;
+    --primary-dark: #388e3c;
+    --primary-light: #c8e6c9;
+    --secondary-color: #2196f3;
+    --text-color: #333;
+    --bg-color: #f5f5f5;
+    --card-bg: #fff;
+    --border-color: #e0e0e0;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --danger-color: #f44336;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+  
+  .app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  /* Header Styles */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+  }
+  
+  .logo {
+    display: flex;
+    align-items: center;
+  }
+  
+  .logo img {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+  }
+  
+  .logo h1 {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+  }
+  
+  .tabs {
+    display: flex;
+  }
+  
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    margin-left: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+  }
+  
+  .tab-btn:hover {
+    background-color: var(--primary-light);
+  }
+  
+  .tab-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+  }
+  
+  /* Card Styles */
+  .card {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .card h2 {
+    margin-bottom: 15px;
+    color: var(--primary-dark);
+    font-size: 1.5rem;
+  }
+  
+  /* Dashboard Styles */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
+  .battery-status {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  .recommendations {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  
+  .quick-stats {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  
+  .history-chart {
+    grid-column: 1 / span 2;
+    grid-row: 3;
+  }
+  
+  /* Battery Indicator */
+  .battery-indicator {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+  }
+  
+  .battery-icon {
+    width: 60px;
+    height: 30px;
+    border: 2px solid #333;
+    border-radius: 3px;
+    position: relative;
+    margin-right: 15px;
+  }
+  
+  .battery-icon:after {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 10px;
+    background: #333;
+    top: 10px;
+    right: -5px;
+    border-radius: 0 2px 2px 0;
+  }
+  
+  .battery-level {
+    height: 100%;
+    background-color: var(--primary-color);
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+  
+  .battery-percentage {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  
+  .battery-info {
+    margin-top: 15px;
+  }
+  
+  .battery-info p {
+    margin-bottom: 8px;
+  }
+  
+  /* Stats Container */
+  .stats-container {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .stat-item {
+    text-align: center;
+    flex: 1;
+  }
+  
+  .stat-item h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+    color: var(--text-color);
+  }
+  
+  .stat-item p {
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  
+  /* Insights Styles */
+  .insights-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
+  .usage-patterns, .charging-habits {
+    grid-column: span 1;
+  }
+  
+  .battery-health-report, .battery-tips {
+    grid-column: span 1;
+  }
+  
+  .tips-list li {
+    margin-bottom: 10px;
+    list-style-position: inside;
+  }
+  
+  /* Settings Styles */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
+  .setting-item {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .setting-item label {
+    margin-bottom: 5px;
+  }
+  
+  .slider-container {
+    display: flex;
+    align-items: center;
+  }
+  
+  .slider-container input[type="range"] {
+    flex: 1;
+    margin-right: 10px;
+  }
+  
+  .setting-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+  
+  /* Button Styles */
+  .primary-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+  }
+  
+  .primary-btn:hover {
+    background-color: var(--primary-dark);
+  }
+  
+  /* Tab Content */
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
+  /* Tips */
+  .tip {
+    padding: 10px;
+    border-left: 3px solid var(--primary-color);
+    background-color: var(--primary-light);
+    margin-bottom: 10px;
+  }
+  
+  /* Health Meter */
+  .health-meter {
+    width: 100%;
+    height: 20px;
+    background-color: #e0e0e0;
+    border-radius: 10px;
+    margin: 15px 0;
+    overflow: hidden;
+  }
+  
+  .health-bar {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    transition: width 0.5s ease;
+  }
+  
+  .save-message {
+    color: var(--success-color);
+    margin-top: 10px;
+    font-weight: bold;
+  }
+  
+  /* Media Queries */
+  @media (max-width: 768px) {
+    .dashboard-grid, .insights-grid, .settings-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .battery-status, .recommendations, .quick-stats, .history-chart {
+      grid-column: 1;
+    }
+    
+    .history-chart {
+      grid-row: 4;
+    }
+    
+    .stats-container {
+      flex-direction: column;
+    }
+    
+    .stat-item {
+      margin-bottom: 15px;
+    }
+    
+    header {
+      flex-direction: column;
+    }
+    
+    .tabs {
+      margin-top: 15px;
+    }
+  }

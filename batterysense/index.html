@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BatterySense</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <div class="logo">
+        <img src="assets/icons/icon.png" alt="BatterySense Logo">
+        <h1>BatterySense</h1>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="insights">Insights</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Dashboard Tab -->
+      <section id="dashboard" class="tab-content active">
+        <div class="dashboard-grid">
+          <div class="card battery-status">
+            <h2>Current Status</h2>
+            <div class="battery-indicator">
+              <div class="battery-icon">
+                <div class="battery-level" id="battery-level"></div>
+              </div>
+              <div class="battery-percentage" id="battery-percentage">0%</div>
+            </div>
+            <div class="battery-info">
+              <p>Status: <span id="charging-status">Unknown</span></p>
+              <p>Health: <span id="battery-health">Unknown</span></p>
+              <p>Time remaining: <span id="time-remaining">Unknown</span></p>
+            </div>
+          </div>
+
+          <div class="card recommendations">
+            <h2>Recommendations</h2>
+            <div id="recommendation-content">
+              <!-- Dynamically filled recommendations will go here -->
+              <p class="tip">No recommendations available yet. Keep BatterySense running to get personalized battery advice.</p>
+            </div>
+          </div>
+
+          <div class="card quick-stats">
+            <h2>Quick Statistics</h2>
+            <div class="stats-container">
+              <div class="stat-item">
+                <h3>Charge cycles</h3>
+                <p id="charge-cycles">N/A</p>
+              </div>
+              <div class="stat-item">
+                <h3>Design capacity</h3>
+                <p id="design-capacity">N/A</p>
+              </div>
+              <div class="stat-item">
+                <h3>Current capacity</h3>
+                <p id="current-capacity">N/A</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card history-chart">
+            <h2>Battery History</h2>
+            <canvas id="battery-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Insights Tab -->
+      <section id="insights" class="tab-content">
+        <div class="insights-grid">
+          <div class="card usage-patterns">
+            <h2>Usage Patterns</h2>
+            <canvas id="usage-chart"></canvas>
+            <div id="usage-analysis">
+              <p>Keep BatterySense running to gather more data for personalized insights.</p>
+            </div>
+          </div>
+
+          <div class="card charging-habits">
+            <h2>Charging Habits</h2>
+            <div id="charging-analysis">
+              <p>BatterySense is learning your charging habits. More insights will appear soon.</p>
+            </div>
+          </div>
+
+          <div class="card battery-health-report">
+            <h2>Battery Health Report</h2>
+            <div id="health-report">
+              <p>Collecting data to generate your battery health report...</p>
+            </div>
+          </div>
+
+          <div class="card battery-tips">
+            <h2>Tips for Battery Longevity</h2>
+            <ul class="tips-list">
+              <li>Avoid extreme temperatures</li>
+              <li>Don't keep your laptop plugged in at 100% for extended periods</li>
+              <li>Aim to keep your battery between 20% and 80% for optimal lifespan</li>
+              <li>Perform a full discharge cycle once a month</li>
+              <li>Update your system software regularly</li>
+              <li>Reduce screen brightness when on battery power</li>
+              <li>Close unused applications to reduce CPU load</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Tab -->
+      <section id="settings" class="tab-content">
+        <div class="settings-grid">
+          <div class="card general-settings">
+            <h2>General Settings</h2>
+            <div class="setting-item">
+              <label for="start-at-login">Start at login</label>
+              <input type="checkbox" id="start-at-login">
+            </div>
+            <div class="setting-item">
+              <label for="minimize-to-tray">Minimize to tray when closed</label>
+              <input type="checkbox" id="minimize-to-tray">
+            </div>
+            <div class="setting-item">
+              <label for="notifications-enabled">Enable notifications</label>
+              <input type="checkbox" id="notifications-enabled">
+            </div>
+          </div>
+
+          <div class="card battery-thresholds">
+            <h2>Battery Thresholds</h2>
+            <div class="setting-item">
+              <label for="overcharge-threshold">Overcharge notification threshold</label>
+              <div class="slider-container">
+                <input type="range" id="overcharge-threshold" min="50" max="100" value="80">
+                <span id="overcharge-threshold-value">80%</span>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label for="low-battery-threshold">Low battery notification threshold</label>
+              <div class="slider-container">
+                <input type="range" id="low-battery-threshold" min="5" max="40" value="20">
+                <span id="low-battery-threshold-value">20%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card optimal-charging">
+            <h2>Optimal Charging Cycle</h2>
+            <div class="setting-item">
+              <label for="optimal-charging-enabled">Enable optimal charging recommendations</label>
+              <input type="checkbox" id="optimal-charging-enabled">
+            </div>
+            <div class="setting-item">
+              <label for="lower-limit">Lower limit (start charging)</label>
+              <div class="slider-container">
+                <input type="range" id="lower-limit" min="10" max="40" value="20">
+                <span id="lower-limit-value">20%</span>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label for="upper-limit">Upper limit (stop charging)</label>
+              <div class="slider-container">
+                <input type="range" id="upper-limit" min="60" max="90" value="80">
+                <span id="upper-limit-value">80%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card check-interval">
+            <h2>Check Interval</h2>
+            <div class="setting-item">
+              <label for="check-interval">Check battery status every</label>
+              <select id="check-interval">
+                <option value="1">1 minute</option>
+                <option value="5" selected>5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card about">
+            <h2>About BatterySense</h2>
+            <p>BatterySense is a software application that comes to the rescue of your laptop's battery woes, offering a humorous yet practical solution.</p>
+            <p>Version 1.0.0</p>
+            <button id="save-settings" class="primary-btn">Save Settings</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

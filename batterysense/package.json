@@ -1,0 +1,36 @@
+{
+  "name": "battery-sense",
+  "version": "1.0.0",
+  "description": "Monitor and optimize your laptop battery health with smart charging recommendations",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-builder"
+  },
+  "author": "Alfeo Raymond Ngelime (Pheogrammer)",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^20.0.0",
+    "electron-builder": "^23.0.0"
+  },
+  "dependencies": {
+    "systeminformation": "^5.12.0",
+    "electron-store": "^8.1.0",
+    "node-notifier": "^10.0.0",
+    "chart.js": "^3.9.0"
+  },
+  "build": {
+    "appId": "com.yourdomain.batterysense",
+    "productName": "BatterySense",
+    "mac": {
+      "category": "public.app-category.utilities"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    }
+  }
+}
