@@ -10,7 +10,7 @@
   <div class="app-container">
     <header>
       <div class="logo">
-        <img src="assets/icons/battery-icon.png" alt="BatterySense Logo">
+        <img src="assets/icons/icon.png" alt="BatterySense Logo">
         <h1>BatterySense</h1>
       </div>
       <div class="tabs">
@@ -26,6 +26,7 @@
         <div class="dashboard-grid">
           <div class="card battery-status">
             <h2>Current Status</h2>
+            <p id="avg-battery-info" class="avg-battery-note">Average of multiple batteries</p>
             <div class="battery-indicator">
               <div class="battery-icon">
                 <div class="battery-level" id="battery-level"></div>
@@ -33,15 +34,16 @@
               <div class="battery-percentage" id="battery-percentage">0%</div>
             </div>
             <div class="battery-info">
-              <p>Status: <span id="charging-status">Unknown</span></p>
+              <p>Status: <span id="charging-icon">🔋</span> <span id="charging-status">Unknown</span></p>
               <p>Health: <span id="battery-health">Unknown</span></p>
               <p>Time remaining: <span id="time-remaining">Unknown</span></p>
+              <p class="note-text" id="time-remaining-note">(Will appear as usage patterns are learned)</p>
             </div>
             
             <!-- Multiple Battery Indicator (hidden by default) -->
             <div id="multi-battery-indicator" style="display: none;" class="multi-battery">
               <h3>Multiple Batteries Detected</h3>
-              <div id="battery-details-container">
+              <div id="battery-details-container" class="battery-details-container">
                 <!-- Individual battery details will be added here dynamically -->
               </div>
             </div>
@@ -61,21 +63,30 @@
               <div class="stat-item">
                 <h3>Charge cycles</h3>
                 <p id="charge-cycles">N/A</p>
+                <span class="stat-note">Total complete charge cycles</span>
               </div>
               <div class="stat-item">
                 <h3>Design capacity</h3>
                 <p id="design-capacity">N/A</p>
+                <span class="stat-note">Original capacity when new</span>
               </div>
               <div class="stat-item">
                 <h3>Current capacity</h3>
                 <p id="current-capacity">N/A</p>
+                <span class="stat-note">Current maximum capacity</span>
               </div>
             </div>
           </div>
 
           <div class="card history-chart">
             <h2>Battery History</h2>
-            <canvas id="battery-chart"></canvas>
+            <div id="battery-history-container">
+              <canvas id="battery-chart"></canvas>
+            </div>
+            <div id="loading-indicator" style="display: none;">
+              <div class="loading-spinner"></div>
+              <span style="margin-left: 10px;">Loading chart data...</span>
+            </div>
           </div>
         </div>
       </section>
@@ -96,6 +107,7 @@
             <div id="charging-analysis">
               <p>BatterySense is learning your charging habits. More insights will appear soon.</p>
             </div>
+            <canvas id="charging-habits-chart"></canvas>
           </div>
 
           <div class="card battery-health-report">

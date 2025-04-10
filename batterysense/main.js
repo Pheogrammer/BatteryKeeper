@@ -14,6 +14,10 @@ let tray;
 let batteryCheckInterval;
 let historyInterval;
 let isQuitting = false;
+let lastBatteryState = {
+  isCharging: null,
+  percentage: null
+};
 
 // Initialize default settings if not set
 function initializeSettings() {
@@ -37,16 +41,22 @@ function initializeSettings() {
 // Create the main application window
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 700,
+    width: 950,
+    height: 720,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     },
-    icon: path.join(__dirname, 'assets/icons/icon.png')
+    icon: path.join(__dirname, 'assets/icons/icon.png'),
+    show: false // Don't show until ready-to-show
   });
 
   mainWindow.loadFile('index.html');
+  
+  // Only show window when it's fully loaded to prevent flickering
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
   
   // Open DevTools for debugging (comment out for production)
   mainWindow.webContents.openDevTools();
@@ -72,7 +82,22 @@ function createTray() {
   const iconPath = path.join(__dirname, 'assets/icons/tray-icon.png');
   tray = new Tray(nativeImage.createFromPath(iconPath));
   
-  const contextMenu = Menu.buildFromTemplate([
+  updateTrayMenu();
+  
+  tray.on('click', () => {
+    mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
+  });
+}
+
+// Update tray menu with current battery info
+async function updateTrayMenu() {
+  const batteryInfo = await getBatteryInfo();
+  const isCharging = batteryInfo ? batteryInfo.ischarging : false;
+  const percentage = batteryInfo ? Math.round(batteryInfo.percent) : 'Unknown';
+  
+  const menu = Menu.buildFromTemplate([
+    { label: `Battery: ${percentage}%${isCharging ? ' (Charging)' : ''}`, enabled: false },
+    { type: 'separator' },
     { label: 'Open BatterySense', click: () => mainWindow.show() },
     { type: 'separator' },
     { label: 'Start at Login', type: 'checkbox', checked: store.get('settings.startAtLogin'), click: (menuItem) => {
@@ -88,13 +113,29 @@ function createTray() {
       app.quit();
     }}
   ]);
-
-  tray.setToolTip('BatterySense');
-  tray.setContextMenu(contextMenu);
   
-  tray.on('click', () => {
-    mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
-  });
+  tray.setContextMenu(menu);
+  
+  // Update tooltip with battery information
+  if (batteryInfo) {
+    const hasMult = batteryInfo.hasMult;
+    let tooltipText = `BatterySense - ${percentage}%${isCharging ? ' (Charging)' : ''}`;
+    
+    if (hasMult) {
+      tooltipText += `\nMultiple batteries (${batteryInfo.count})`;
+      batteryInfo.batteries.forEach((bat, idx) => {
+        tooltipText += `\nBattery ${idx + 1}: ${Math.round(bat.percent)}%${bat.ischarging ? ' (Charging)' : ''}`;
+      });
+    }
+    
+    tray.setToolTip(tooltipText);
+  } else {
+    tray.setToolTip('BatterySense');
+  }
+  
+  // Update tray icon based on battery status (if needed in the future)
+  // const iconName = `tray-icon${isCharging ? '-charging' : ''}.png`;
+  // tray.setImage(nativeImage.createFromPath(path.join(__dirname, 'assets/icons', iconName)));
 }
 
 // Get battery information using batteryMonitor
@@ -114,12 +155,25 @@ async function checkBatteryStatus() {
   const batteryInfo = await getBatteryInfo();
   if (!batteryInfo) return;
 
+  // Check if significant change occurred to avoid redundant UI updates 
+  const significantChange = isSignificantBatteryChange(batteryInfo, lastBatteryState);
+  
+  // Update tray menu with new battery info
+  updateTrayMenu();
+  
+  // Store the updated state
+  lastBatteryState = {
+    isCharging: batteryInfo.ischarging,
+    percentage: batteryInfo.percent
+  };
+
   // Send current data to UI
   if (mainWindow && !mainWindow.isDestroyed()) {
     const historyData = store.get('batteryHistory') || [];
     mainWindow.webContents.send('battery-updated', {
       current: batteryInfo,
-      history: historyData
+      history: historyData,
+      significantChange
     });
   }
 
@@ -132,6 +186,19 @@ async function checkBatteryStatus() {
     // Send notifications based on battery status
     notificationSystem.checkBatteryNotifications(batteryInfo, analysis);
   }
+}
+
+// Determine if a battery change is significant enough to update UI
+function isSignificantBatteryChange(currentState, lastState) {
+  if (!lastState.percentage) return true; // First check
+  
+  // Always report charging state changes
+  if (currentState.ischarging !== lastState.isCharging) return true;
+  
+  // Report percentage changes that are >= 1%
+  if (Math.abs(currentState.percent - lastState.percentage) >= 1) return true;
+  
+  return false;
 }
 
 // Save battery history data less frequently
@@ -191,7 +258,8 @@ ipcMain.on('request-battery-data', async (event) => {
   
   event.reply('battery-updated', {
     current: batteryInfo,
-    history: historyData
+    history: historyData,
+    significantChange: true // Force full update on direct request
   });
 });
 

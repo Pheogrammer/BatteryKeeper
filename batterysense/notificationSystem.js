@@ -74,7 +74,8 @@ function sendNotification(title, message, type = 'info') {
     message,
     icon: iconPath,
     sound: type === 'critical', // Only play sound for critical notifications
-    timeout: 10 // Auto-close after 10 seconds
+    timeout: 10, // Auto-close after 10 seconds
+    actions: ['Dismiss', 'Open BatterySense']
   });
   
   return true;
@@ -100,9 +101,45 @@ function checkBatteryNotifications(batteryData, batteryAnalysis) {
           'critical'
         );
       }
+      
+      // Significant imbalance between batteries
+      if (index === 0 && batteryData.batteries.length > 1) {
+        const batteryLevels = batteryData.batteries.map(b => b.percent);
+        const maxLevel = Math.max(...batteryLevels);
+        const minLevel = Math.min(...batteryLevels);
+        
+        if (maxLevel - minLevel > 30) {
+          // Only notify once a week
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          
+          const recentNotifications = store.get('recentNotifications') || [];
+          const similarNotificationExists = recentNotifications.some(
+            notification => 
+              notification.type === 'battery-imbalance' && 
+              new Date(notification.timestamp) >= oneWeekAgo
+          );
+          
+          if (!similarNotificationExists) {
+            sendNotification(
+              'BatterySense - Battery Imbalance Detected',
+              `Your batteries have a significant charge imbalance (${Math.round(minLevel)}% - ${Math.round(maxLevel)}%). Consider calibrating your batteries.`,
+              'warning'
+            );
+            
+            // Track this special notification type
+            const now = new Date();
+            recentNotifications.push({
+              type: 'battery-imbalance',
+              title: 'Battery Imbalance',
+              timestamp: now.toISOString()
+            });
+            
+            store.set('recentNotifications', recentNotifications);
+          }
+        }
+      }
     });
-    
-    // For other notifications, use the aggregate battery data
   }
   
   // Overcharge notification
@@ -184,43 +221,6 @@ function checkBatteryNotifications(batteryData, batteryAnalysis) {
     }
   }
   
-  // Multiple battery specific notifications
-  if (batteryData.hasMult) {
-    // Check for significantly unbalanced batteries
-    const percentages = batteryData.batteries.map(bat => bat.percent);
-    const maxPercentage = Math.max(...percentages);
-    const minPercentage = Math.min(...percentages);
-    
-    if (maxPercentage - minPercentage > 20) {
-      // Only send once per week
-      const oneWeekAgo = new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000);
-      const recentNotifications = store.get('recentNotifications') || [];
-      const similarNotificationExists = recentNotifications.some(
-        notification => 
-          notification.type === 'unbalanced-batteries' && 
-          new Date(notification.timestamp) >= oneWeekAgo
-      );
-      
-      if (!similarNotificationExists) {
-        sendNotification(
-          'BatterySense - Unbalanced Batteries',
-          `Your batteries are significantly unbalanced (${Math.round(minPercentage)}% - ${Math.round(maxPercentage)}%). Consider running a battery calibration.`,
-          'warning'
-        );
-        
-        // Track this notification
-        const now = new Date();
-        recentNotifications.push({
-          type: 'unbalanced-batteries',
-          title: 'Unbalanced Batteries',
-          timestamp: now.toISOString()
-        });
-        
-        store.set('recentNotifications', recentNotifications);
-      }
-    }
-  }
-  
   // Usage pattern notifications
   if (batteryAnalysis && batteryAnalysis.recommendations) {
     for (const recommendation of batteryAnalysis.recommendations) {
@@ -252,6 +252,33 @@ function checkBatteryNotifications(batteryData, batteryAnalysis) {
       }
     }
   }
+  
+  // Charging/discharging state changes
+  const lastBatteryState = store.get('lastBatteryState');
+  if (lastBatteryState) {
+    if (lastBatteryState.isCharging !== isCharging) {
+      // Notify of state change
+      if (isCharging) {
+        sendNotification(
+          'BatterySense - Charging Started',
+          `Your laptop is now charging. Current battery level: ${Math.round(percentage)}%.`,
+          'info'
+        );
+      } else {
+        sendNotification(
+          'BatterySense - On Battery Power',
+          `Your laptop is now running on battery power. Current battery level: ${Math.round(percentage)}%.`,
+          'info'
+        );
+      }
+    }
+  }
+  
+  // Store current state for future comparison
+  store.set('lastBatteryState', {
+    isCharging: isCharging,
+    percentage: percentage
+  });
 }
 
 // Clear notification history

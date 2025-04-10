@@ -42,9 +42,15 @@ async function getBatteryDetails() {
       const aggregateBattery = {
         hasMult: true,
         count: batteryData.length,
-        batteries: batteryData,
-        // Calculate aggregate values
-        percent: batteryData.reduce((sum, battery) => sum + battery.percent, 0) / batteryData.length,
+        batteries: batteryData.map(bat => {
+          // Add health score to each individual battery
+          if (bat.maxcapacity && bat.designcapacity) {
+            bat.healthScore = Math.round((bat.maxcapacity / bat.designcapacity) * 100);
+          }
+          return bat;
+        }),
+        // Calculate aggregate values - weighted average based on capacity
+        percent: calculateWeightedAverageBatteryLevel(batteryData),
         ischarging: batteryData.some(battery => battery.ischarging),
         // Total capacity
         maxcapacity: batteryData.reduce((sum, battery) => sum + (battery.maxcapacity || 0), 0),
@@ -53,14 +59,17 @@ async function getBatteryDetails() {
         cyclecount: Math.round(
           batteryData.reduce((sum, battery) => sum + (battery.cyclecount || 0), 0) / batteryData.length
         ),
-        // Use the minimum time remaining as the overall time
-        timeremaining: Math.min(...batteryData.map(battery => 
-          battery.timeremaining !== undefined ? battery.timeremaining : Infinity)
-        )
+        // Use the minimum time remaining as the overall time (from discharging batteries)
+        timeremaining: batteryData
+          .filter(bat => !bat.ischarging && bat.timeremaining !== undefined)
+          .reduce((min, bat) => 
+            Math.min(min === null ? Infinity : min, bat.timeremaining === undefined ? Infinity : bat.timeremaining), 
+            null
+          )
       };
       
       // Fix Infinity case for timeremaining
-      if (aggregateBattery.timeremaining === Infinity) {
+      if (aggregateBattery.timeremaining === Infinity || aggregateBattery.timeremaining === null) {
         aggregateBattery.timeremaining = null;
       }
       
@@ -80,6 +89,22 @@ async function getBatteryDetails() {
   }
 }
 
+// Calculate a weighted average battery level based on capacities
+function calculateWeightedAverageBatteryLevel(batteries) {
+  // If no capacity info, use simple average
+  const hasCapacityInfo = batteries.every(bat => bat.maxcapacity !== undefined);
+  
+  if (!hasCapacityInfo) {
+    return batteries.reduce((sum, bat) => sum + bat.percent, 0) / batteries.length;
+  }
+  
+  // Calculate weighted average based on capacity
+  const totalCapacity = batteries.reduce((sum, bat) => sum + bat.maxcapacity, 0);
+  const weightedSum = batteries.reduce((sum, bat) => sum + (bat.percent * bat.maxcapacity), 0);
+  
+  return weightedSum / totalCapacity;
+}
+
 // Analyze battery usage patterns
 function analyzeBatteryUsage(historyData) {
   if (!historyData || historyData.length < 5) {
@@ -91,6 +116,11 @@ function analyzeBatteryUsage(historyData) {
     };
   }
   
+  // Sort history data chronologically
+  const sortedHistory = [...historyData].sort((a, b) => 
+    new Date(a.timestamp) - new Date(b.timestamp)
+  );
+  
   // Calculate average drain rate
   let totalDrain = 0;
   let drainCount = 0;
@@ -98,9 +128,9 @@ function analyzeBatteryUsage(historyData) {
   let deepDischargeEvents = 0;
   let overchargeEvents = 0;
   
-  for (let i = 1; i < historyData.length; i++) {
-    const prev = historyData[i - 1];
-    const current = historyData[i];
+  for (let i = 1; i < sortedHistory.length; i++) {
+    const prev = sortedHistory[i - 1];
+    const current = sortedHistory[i];
     
     // Count charging events
     if (!prev.isCharging && current.isCharging) {
@@ -135,12 +165,16 @@ function analyzeBatteryUsage(historyData) {
     }
   }
   
+  // Extract charging sessions
+  const chargingSessions = extractChargingSessions(sortedHistory);
+  
   const averageDrainRate = drainCount > 0 ? totalDrain / drainCount : null;
   const estimatedLifeHours = averageDrainRate ? 100 / averageDrainRate : null;
   const chargingFrequency = {
     total: chargingEvents,
     deepDischarge: deepDischargeEvents,
-    overcharge: overchargeEvents
+    overcharge: overchargeEvents,
+    sessions: chargingSessions
   };
   
   // Generate recommendations
@@ -175,6 +209,41 @@ function analyzeBatteryUsage(historyData) {
   };
 }
 
+// Extract charging sessions from history data
+function extractChargingSessions(historyData) {
+  const sessions = [];
+  let currentSession = null;
+  
+  for (let i = 0; i < historyData.length; i++) {
+    const current = historyData[i];
+    
+    // Start of charging session
+    if (current.isCharging && (i === 0 || !historyData[i-1].isCharging)) {
+      currentSession = {
+        startTime: new Date(current.timestamp),
+        startPercentage: current.percentage
+      };
+    }
+    
+    // End of charging session
+    if (currentSession && (!current.isCharging || i === historyData.length - 1) && 
+        (i > 0 && historyData[i-1].isCharging)) {
+      currentSession.endTime = new Date(current.timestamp);
+      currentSession.endPercentage = current.percentage;
+      currentSession.duration = (currentSession.endTime - currentSession.startTime) / (1000 * 60); // in minutes
+      
+      // Only include valid sessions (at least 1 minute and some charging occurred)
+      if (currentSession.duration >= 1 && currentSession.endPercentage > currentSession.startPercentage) {
+        sessions.push(currentSession);
+      }
+      
+      currentSession = null;
+    }
+  }
+  
+  return sessions;
+}
+
 // Calculate battery wear level
 function calculateBatteryWear(batteryData) {
   if (!batteryData || !batteryData.maxcapacity || !batteryData.designcapacity) {
@@ -187,12 +256,59 @@ function calculateBatteryWear(batteryData) {
 
 // Get estimated remaining battery life
 function getEstimatedTimeRemaining(batteryData, batteryAnalysis) {
+  // If the OS provides an estimate, use it
+  if (batteryData && !batteryData.ischarging && batteryData.timeremaining) {
+    return batteryData.timeremaining;
+  }
+  
+  // Otherwise calculate based on our own analysis
   if (!batteryData || batteryData.ischarging || !batteryAnalysis || !batteryAnalysis.averageDrainRate) {
     return null;
   }
   
   const currentPercentage = batteryData.percent;
-  return currentPercentage / batteryAnalysis.averageDrainRate;
+  return (currentPercentage / batteryAnalysis.averageDrainRate) * 60; // Convert hours to minutes
+}
+
+// Predict charging time to full
+function predictChargingTimeToFull(batteryData, historyData) {
+  if (!batteryData || !batteryData.ischarging || !historyData || historyData.length < 5) {
+    return null;
+  }
+  
+  // Extract charging sessions
+  const sortedHistory = [...historyData].sort((a, b) => 
+    new Date(a.timestamp) - new Date(b.timestamp)
+  );
+  
+  const chargingSessions = extractChargingSessions(sortedHistory);
+  
+  if (chargingSessions.length < 2) {
+    return null; // Not enough data to predict
+  }
+  
+  // Calculate average charging rate (percent per minute)
+  let totalRate = 0;
+  let count = 0;
+  
+  for (const session of chargingSessions) {
+    const percentChange = session.endPercentage - session.startPercentage;
+    const rate = percentChange / session.duration; // percent per minute
+    
+    if (rate > 0) {
+      totalRate += rate;
+      count++;
+    }
+  }
+  
+  if (count === 0) return null;
+  
+  const avgChargingRate = totalRate / count;
+  const currentPercentage = batteryData.percent;
+  const percentToFull = 100 - currentPercentage;
+  
+  // Estimate minutes until full
+  return Math.round(percentToFull / avgChargingRate);
 }
 
 // Predict optimal charge time
@@ -257,7 +373,10 @@ function saveBatteryData(batteryData) {
     historyEntry.batteryCount = batteryData.count;
     
     // Add individual battery percentages
-    historyEntry.batteryPercentages = batteryData.batteries.map(battery => battery.percent);
+    historyEntry.batteryPercentages = batteryData.batteries.map(battery => ({
+      percentage: battery.percent,
+      isCharging: battery.ischarging
+    }));
   }
   
   historyData.push(historyEntry);
@@ -280,6 +399,8 @@ module.exports = {
   calculateBatteryHealth,
   calculateBatteryWear,
   getEstimatedTimeRemaining,
+  predictChargingTimeToFull,
   predictOptimalChargeTime,
-  saveBatteryData
+  saveBatteryData,
+  extractChargingSessions
 };

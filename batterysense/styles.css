@@ -13,6 +13,7 @@
     --danger-color: #f44336;
     --charging-color: #4caf50;
     --discharging-color: #ff9800;
+    --note-color: #757575;
   }
   
   * {
@@ -90,12 +91,23 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     padding: 20px;
     margin-bottom: 20px;
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
   
   .card h2 {
     margin-bottom: 15px;
     color: var(--primary-dark);
     font-size: 1.5rem;
+  }
+  
+  .card h3 {
+    margin-bottom: 10px;
+    color: var(--primary-dark);
+    font-size: 1.2rem;
   }
   
   /* Dashboard Styles */
@@ -156,7 +168,7 @@
     height: 100%;
     background-color: var(--primary-color);
     width: 0%;
-    transition: width 0.5s ease;
+    transition: width 0.5s ease, background-color 0.5s ease;
   }
   
   .battery-percentage {
@@ -170,21 +182,19 @@
   
   .battery-info p {
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
   }
   
   /* Charging status indicator */
-  #charging-status {
-    position: relative;
-    padding-left: 20px;
+  #charging-icon {
+    margin-right: 5px;
+    font-size: 1.2em;
   }
   
-  #charging-status::before {
-    content: '⚡';
-    position: absolute;
-    left: 0;
-    top: 0;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+  #charging-status {
+    position: relative;
+    transition: color 0.3s ease;
   }
   
   #charging-status.charging {
@@ -192,8 +202,20 @@
     font-weight: bold;
   }
   
-  #charging-status.charging::before {
-    opacity: 1;
+  .note-text {
+    font-size: 0.8rem;
+    color: var(--note-color);
+    font-style: italic;
+    margin-top: -5px;
+    margin-bottom: 10px;
+  }
+  
+  .avg-battery-note {
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+    margin-bottom: 10px;
+    font-style: italic;
+    display: none;
   }
   
   /* Multiple Battery Display */
@@ -213,19 +235,27 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
   }
   
   .individual-battery {
-    padding: 10px;
+    padding: 12px;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 6px;
     background-color: rgba(0, 0, 0, 0.02);
+    transition: background-color 0.3s ease;
+  }
+  
+  .individual-battery:hover {
+    background-color: rgba(0, 0, 0, 0.04);
   }
   
   .individual-battery-header {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
+    font-weight: bold;
   }
   
   .individual-battery-bar {
@@ -233,13 +263,13 @@
     background-color: #e0e0e0;
     border-radius: 5px;
     overflow: hidden;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
   }
   
   .individual-battery-level {
     height: 100%;
     background-color: var(--primary-color);
-    transition: width 0.5s ease;
+    transition: width 0.5s ease, background-color 0.5s ease;
   }
   
   .individual-battery-status {
@@ -251,6 +281,79 @@
   
   .individual-battery-charging {
     color: var(--charging-color);
+    font-weight: bold;
+  }
+  
+  .battery-time-info {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--note-color);
+  }
+  
+  /* Stats Container */
+  .stats-container {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .stat-item {
+    text-align: center;
+    flex: 1;
+    padding: 10px;
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .stat-item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  .stat-item h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+    color: var(--text-color);
+  }
+  
+  .stat-item p {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .stat-note {
+    font-size: 0.8rem;
+    color: var(--note-color);
+    display: block;
+  }
+  
+  /* Loading indicator */
+  #loading-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    color: var(--note-color);
+  }
+  
+  .loading-spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: var(--primary-color);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Chart containers */
+  #battery-history-container, 
+  #charging-habits-chart {
+    height: 300px;
+    position: relative;
   }
   
   /* Insights Styles */
@@ -298,17 +401,19 @@
   .slider-container input[type="range"] {
     flex: 1;
     margin-right: 10px;
+    accent-color: var(--primary-color);
   }
   
   .setting-item input[type="checkbox"] {
     width: 20px;
     height: 20px;
     cursor: pointer;
+    accent-color: var(--primary-color);
   }
   
   .setting-note {
     font-size: 0.8rem;
-    color: #666;
+    color: var(--note-color);
     margin-top: 5px;
     font-style: italic;
   }
@@ -332,6 +437,12 @@
   /* Tab Content */
   .tab-content {
     display: none;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
   }
   
   .tab-content.active {
@@ -340,10 +451,21 @@
   
   /* Tips */
   .tip {
-    padding: 10px;
+    padding: 15px;
     border-left: 3px solid var(--primary-color);
     background-color: var(--primary-light);
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    border-radius: 0 4px 4px 0;
+    transition: transform 0.2s ease;
+  }
+  
+  .tip:hover {
+    transform: translateX(3px);
+  }
+  
+  .tip h3 {
+    margin-bottom: 8px;
+    color: var(--primary-dark);
   }
   
   /* Health Meter */
@@ -354,6 +476,7 @@
     border-radius: 10px;
     margin: 15px 0;
     overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
   .health-bar {
@@ -363,24 +486,51 @@
     justify-content: center;
     color: white;
     font-weight: bold;
-    transition: width 0.5s ease;
+    transition: width 0.8s ease;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
   
   .save-message {
     color: var(--success-color);
     margin-top: 10px;
     font-weight: bold;
+    padding: 8px;
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: 4px;
+    animation: fadeInOut 3s;
+  }
+  
+  @keyframes fadeInOut {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
   }
   
   /* Animation classes */
-  @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
+  .status-changed {
+    animation: flash 1s;
+  }
+  
+  @keyframes flash {
+    0% { background-color: rgba(76, 175, 80, 0.3); }
+    100% { background-color: transparent; }
   }
   
   .charging-animation {
     animation: pulse 1.5s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  
+  /* Fancy focus effect on cards */
+  .card:focus-within {
+    box-shadow: 0 0 0 2px var(--primary-light);
+    outline: none;
   }
   
   /* Media Queries */
@@ -411,9 +561,62 @@
     
     .tabs {
       margin-top: 15px;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+    }
+    
+    .tab-btn {
+      flex: 1;
+      text-align: center;
+      margin: 0 2px;
     }
     
     .multi-battery .battery-details-container {
       flex-direction: column;
+    }
+    
+    .battery-info p {
+      flex-wrap: wrap;
+    }
+  }
+  
+  /* Dark mode support for users with dark mode preference */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --text-color: #e0e0e0;
+      --border-color: #333;
+      --note-color: #aaa;
+    }
+    
+    .battery-icon {
+      border-color: #555;
+    }
+    
+    .battery-icon:after {
+      background: #555;
+    }
+    
+    .tip {
+      background-color: rgba(76, 175, 80, 0.15);
+    }
+    
+    .individual-battery {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+    
+    .individual-battery:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    .health-meter {
+      background-color: #333;
+    }
+    
+    .loading-spinner {
+      border-color: rgba(255, 255, 255, 0.1);
+      border-left-color: var(--primary-color);
     }
   }
